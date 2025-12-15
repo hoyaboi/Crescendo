@@ -2,6 +2,7 @@ from typing import Dict, List
 from .model_configs import AVAILABLE_MODELS, ModelConfig
 import os
 
+
 class ModelFactory:
     @staticmethod
     def get_model_config(model_key: str) -> ModelConfig:
@@ -15,6 +16,7 @@ class ModelFactory:
             )
         return AVAILABLE_MODELS[model_key]
     
+
     @staticmethod
     def create_targets(target_model: str, attack_model: str, judge_model: str, refusal_judge_model: str) -> Dict:
         # 모델 객체 생성
@@ -37,6 +39,7 @@ class ModelFactory:
             print(f"Error creating targets: {str(e)}\n")
             raise
     
+
     @staticmethod
     def list_available_models():
         # 사용 가능한 모델 목록 출력
@@ -53,6 +56,7 @@ class ModelFactory:
         
         print("\n" + "="*78 + "\n")
     
+
     @staticmethod
     def check_api_keys():
         # 설정된 API 키 확인
@@ -70,6 +74,7 @@ class ModelFactory:
                 print(f"\n{key_name:20s} NOT SET")
         
         print("\n" + "="*78 + "\n")
+    
     
     @staticmethod
     def get_models_by_type(model_type: str) -> List[str]:

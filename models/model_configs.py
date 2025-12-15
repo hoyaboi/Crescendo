@@ -5,6 +5,7 @@ import os
 from pyrit.prompt_target import OpenAIChatTarget
 from pyrit.prompt_target import HuggingFaceChatTarget
 
+
 @dataclass
 class ModelConfig:
     name: str
