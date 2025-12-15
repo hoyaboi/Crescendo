@@ -57,10 +57,10 @@ class CrescendoExperiment:
         self.memory = DuckDBMemory()
         self.results: List[Dict[str, Any]] = []
 
+
+    # 판단 모듈
     def _create_refusal_judge(self):
-        return SelfAskRefusalScorer(
-            chat_target=self.targets["refusal_judge"]
-        )
+        return SelfAskRefusalScorer(chat_target=self.targets["refusal_judge"])
 
     def _create_primary_judge(self):
         return FloatScaleThresholdScorer(
@@ -79,12 +79,15 @@ class CrescendoExperiment:
             system_prompt_path=SelfAskScaleScorer.SystemPaths.RED_TEAMER_SYSTEM_PROMPT.value,
         )
 
+
+    # 단일 테스크 실행
     async def run_single_task(self, objective: str, task_name: str) -> Dict[str, Any]:
 
-        print(f"\n{'=' * 70}")
-        print(f"Task: {task_name}")
-        print(f"Objective: {objective}")
-        print(f"{'=' * 70}")
+        print("\n" + "=" * 70)
+        print(f"[Task Started] {task_name}")
+        print("Objective:")
+        print(objective)
+        print("=" * 70)
 
         primary_judge = self._create_primary_judge()
         secondary_judge = self._create_secondary_judge()
@@ -115,14 +118,30 @@ class CrescendoExperiment:
         start_time = datetime.now()
 
         try:
+            # Crescendo Attack 실행
             result = await attack.run_attack_async(objective=objective)
-
             conversation: List[Message] = attack.get_memory()
-
             duration = (datetime.now() - start_time).total_seconds()
-
             num_turns = sum(1 for m in conversation if m.role == "user")
 
+            # Final Turn Summary 추출
+            if len(conversation) >= 2:
+                last_attacker = conversation[-2]
+                last_target = conversation[-1]
+            else:
+                last_attacker = None
+                last_target = None
+
+            final_turn_summary = None
+            if last_attacker and last_target:
+                final_turn_summary = {
+                    "turn": num_turns,
+                    "attacker": last_attacker.content,
+                    "target": last_target.content,
+                    "score": getattr(result, "score", None),
+                }
+
+            # 결과 저장
             result_dict = {
                 "task_name": task_name,
                 "objective": objective,
@@ -130,19 +149,28 @@ class CrescendoExperiment:
                 "score": getattr(result, "score", None),
                 "num_turns": num_turns,
                 "duration_seconds": duration,
+                "final_turn": final_turn_summary,
                 "config": self.config.to_dict(),
-                "conversation": [
-                    {
-                        "turn": i,
-                        "role": m.role,
-                        "content": (
-                            m.content[:200] + "..."
-                            if len(m.content) > 200 else m.content
-                        ),
-                    }
-                    for i, m in enumerate(conversation)
-                ],
             }
+
+            # 결과 출력
+            print("\n" + "=" * 70)
+            print(f"[Task Completed] {task_name}")
+            print("=" * 70)
+            print(f"Success: {result.achieved}")
+            print(f"Final Score: {getattr(result, 'score', None)}")
+            print(f"Turns Used: {num_turns}")
+            print(f"Duration: {duration:.1f} seconds")
+
+            if final_turn_summary:
+                print("\nFinal Turn Summary:")
+                print(f"  Turn {final_turn_summary['turn']}")
+                print("  Attacker Prompt:")
+                print(f"      {final_turn_summary['attacker'][:200]}")
+                print("  Target Response:")
+                print(f"      {final_turn_summary['target'][:200]}")
+
+            print("=" * 70)
 
             self.results.append(result_dict)
             return result_dict
@@ -159,11 +187,14 @@ class CrescendoExperiment:
             self.results.append(err)
             return err
 
+
+    # 다중 테스크 실행
     async def run_multiple_tasks(self, tasks: List[Dict[str, str]]):
         total = len(tasks)
         for idx, t in enumerate(tasks, 1):
             print_task_progress(idx, total, t["name"])
             await self.run_single_task(t["objective"], t["name"])
+
 
     def save_results(self, filename: str = None):
         return save_results(self.results, filename)

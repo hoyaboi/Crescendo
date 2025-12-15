@@ -43,7 +43,9 @@ class ModelFactory:
     @staticmethod
     def list_available_models():
         # 사용 가능한 모델 목록 출력
-        print("\n" + "="*30 + " AVAILABLE MODELS " + "="*30)
+        print("\n" + "="*70)
+        print("AVAILABLE MODELS")
+        print("="*70)
         
         by_type = {}
         for key, config in AVAILABLE_MODELS.items():
@@ -54,13 +56,15 @@ class ModelFactory:
             for key, config in by_type[model_type]:
                 print(f"  {key:20s} -> {config.name}")
         
-        print("\n" + "="*78 + "\n")
+        print("\n" + "="*70 + "\n")
     
 
     @staticmethod
     def check_api_keys():
         # 설정된 API 키 확인
-        print("\n" + "="*31 + " API KEY STATUS " + "="*31)
+        print("\n" + "="*70)
+        print("API KEY STATUS")
+        print("="*70)
         
         required_keys = set()
         for config in AVAILABLE_MODELS.values():
@@ -73,9 +77,9 @@ class ModelFactory:
             else:
                 print(f"\n{key_name:20s} NOT SET")
         
-        print("\n" + "="*78 + "\n")
+        print("\n" + "="*70 + "\n")
     
-    
+
     @staticmethod
     def get_models_by_type(model_type: str) -> List[str]:
         return [

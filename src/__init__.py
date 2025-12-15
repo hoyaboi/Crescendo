@@ -1,8 +1,4 @@
-from .orchestrator import (
-    CrescendoExperiment,
-    ExperimentConfig,
-)
-
+from .orchestrator import CrescendoExperiment, ExperimentConfig
 from .utils import (
     create_output_dir,
     save_results,
