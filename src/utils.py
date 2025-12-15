@@ -27,7 +27,7 @@ def save_results(results: List[Dict[str, Any]], filename: str = None) -> str:
     filepath = os.path.join(dirs["results"], filename)
     
     with open(filepath, 'w', encoding='utf-8') as f:
-        json.dump(results, f, indent=2, ensure_ascii=False)
+        json.dump(results, f, ensure_ascii=False)
     
     print(f"\nResults saved to: {filepath}")
     return filepath
