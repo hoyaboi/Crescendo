@@ -116,9 +116,10 @@ async def main():
     print(f"  Max Turns:           {args.max_turns}")
     print(f"  Max Backtracks:      {args.max_backtracks}")
     print(f"  Objective Threshold: {args.objective_threshold}")
-    print(f"  Tasks File:          {args.tasks_file}")
+    print(f"  Tasks File:          {args.tasks_file}\n")
     print("="*70)
     
+    experiment = None
     try:
         # 1. 모델 타겟 생성
         targets = ModelFactory.create_targets(
@@ -158,7 +159,7 @@ async def main():
         
     except KeyboardInterrupt:
         print("\n\nEvaluation interrupted by user.")
-        if experiment.results:
+        if experiment and experiment.results:
             print("Saving partial results...")
             experiment.save_results()
         sys.exit(1)
