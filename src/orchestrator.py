@@ -1,6 +1,6 @@
 import asyncio
 from datetime import datetime
-from typing import Dict, Any, List, Optional
+from typing import Dict, Any, List, Optional, MutableSequence
 
 from pyrit.executor.attack.multi_turn.crescendo import CrescendoAttack
 from pyrit.executor.attack.core import (
@@ -13,7 +13,8 @@ from pyrit.score import (
     SelfAskScaleScorer,
     FloatScaleThresholdScorer,
 )
-from pyrit.models import Message
+from pyrit.models import AttackOutcome, Message
+from pyrit.memory.central_memory import CentralMemory
 
 from .utils import save_results, print_result_summary, print_task_progress
 
@@ -72,11 +73,9 @@ class CrescendoExperiment:
         print(objective)
         print("=" * 70)
 
-        # Judges
         primary_judge = self._create_primary_judge()
         refusal_judge = self._create_refusal_judge()
 
-        # PyRIT scoring config
         scoring_config = AttackScoringConfig(
             objective_scorer=primary_judge,
             refusal_scorer=refusal_judge,
@@ -103,7 +102,10 @@ class CrescendoExperiment:
         try:
             # Crescendo Attack 실행
             result = await attack.execute_async(objective=objective)
-            conversation: List[Message] = attack.get_memory()
+            
+            # 대화 내용 가져오기
+            memory = CentralMemory.get_memory_instance()
+            conversation: MutableSequence[Message] = memory.get_conversation(conversation_id=result.conversation_id)
 
             duration = (datetime.now() - start_time).total_seconds()
             num_turns = sum(1 for m in conversation if m.role == "user")
@@ -116,19 +118,21 @@ class CrescendoExperiment:
             if last_attacker and last_target:
                 final_turn_summary = {
                     "turn": num_turns,
-                    "attacker": last_attacker.content,
-                    "target": last_target.content,
+                    "attacker": last_attacker.get_value(),
+                    "target": last_target.get_value(),
                 }
 
             final_score = None
-            if hasattr(result, "last_score") and result.last_score:
+            if result.last_score:
                 final_score = result.last_score.get_value()
+
+            success = result.outcome == AttackOutcome.SUCCESS
 
             # 결과 저장 및 출력
             result_dict = {
                 "task_name": task_name,
                 "objective": objective,
-                "success": result.achieved,
+                "success": success,
                 "score": final_score,
                 "num_turns": num_turns,
                 "duration_seconds": duration,
@@ -139,7 +143,7 @@ class CrescendoExperiment:
             print("\n" + "=" * 70)
             print(f"[Task Completed] {task_name}")
             print("=" * 70)
-            print(f"Success: {result.achieved}")
+            print(f"Success: {success}")
             print(f"Score: {final_score}")
             print(f"Turns Used: {num_turns}")
             print(f"Duration: {duration:.1f} seconds")

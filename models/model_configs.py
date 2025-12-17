@@ -81,10 +81,10 @@ AVAILABLE_MODELS = {
         api_key_env="HUGGINGFACE_TOKEN"
     ),
     "llama-2-7b": ModelConfig(
-    name="LLaMA-2-7b",
-    model_type="huggingface",
-    deployment_name="meta-llama/Llama-2-7b-chat-hf",
-    api_key_env="HUGGINGFACE_TOKEN"
+        name="LLaMA-2-7b",
+        model_type="huggingface",
+        deployment_name="meta-llama/Llama-2-7b-chat-hf",
+        api_key_env="HUGGINGFACE_TOKEN"
     ),
     "llama-3-8b": ModelConfig(
         name="LLaMA-3-8B",
