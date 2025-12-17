@@ -1,7 +1,7 @@
 import os
 import json
 from datetime import datetime
-from typing import Dict, Any, List
+from typing import Dict, Any, List, Optional
 
 
 def create_output_dir(base_dir: str = "outputs") -> Dict[str, str]:
@@ -17,7 +17,7 @@ def create_output_dir(base_dir: str = "outputs") -> Dict[str, str]:
     return dirs
 
 
-def save_results(results: List[Dict[str, Any]], filename: str = None) -> str:
+def save_results(results: List[Dict[str, Any]], filename: Optional[str] = None) -> str:
     dirs = create_output_dir()
     
     if filename is None:
