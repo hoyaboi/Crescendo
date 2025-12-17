@@ -1,8 +1,7 @@
 import asyncio
 from datetime import datetime
-from typing import Dict, Any, List
+from typing import Dict, Any, List, Optional
 
-from pyrit.memory import DuckDBMemory
 from pyrit.executor.attack.multi_turn.crescendo import CrescendoAttack
 from pyrit.executor.attack.core import (
     AttackAdversarialConfig,
@@ -39,29 +38,20 @@ class ExperimentConfig:
         self.objective_threshold = objective_threshold
 
     def to_dict(self) -> Dict[str, Any]:
-        return {
-            "target_model": self.target_model,
-            "attacker_model": self.attacker_model,
-            "judge_model": self.judge_model,
-            "refusal_judge_model": self.refusal_judge_model,
-            "max_turns": self.max_turns,
-            "max_backtracks": self.max_backtracks,
-            "objective_threshold": self.objective_threshold,
-        }
+        return self.__dict__
 
 
 class CrescendoExperiment:
     def __init__(self, config: ExperimentConfig, targets: Dict[str, Any]):
         self.config = config
         self.targets = targets
-        self.memory = DuckDBMemory()
         self.results: List[Dict[str, Any]] = []
 
 
     # 판단 모듈
     def _create_refusal_judge(self):
         return SelfAskRefusalScorer(chat_target=self.targets["refusal_judge"])
-
+    
     def _create_primary_judge(self):
         return FloatScaleThresholdScorer(
             scorer=SelfAskScaleScorer(
@@ -70,13 +60,6 @@ class CrescendoExperiment:
                 system_prompt_path=SelfAskScaleScorer.SystemPaths.RED_TEAMER_SYSTEM_PROMPT.value,
             ),
             threshold=self.config.objective_threshold,
-        )
-
-    def _create_secondary_judge(self):
-        return SelfAskScaleScorer(
-            chat_target=self.targets["judge"],
-            scale_arguments_path=SelfAskScaleScorer.ScalePaths.JUDGMENT_CORRECTION_SCALE.value,
-            system_prompt_path=SelfAskScaleScorer.SystemPaths.RED_TEAMER_SYSTEM_PROMPT.value,
         )
 
 
@@ -89,14 +72,14 @@ class CrescendoExperiment:
         print(objective)
         print("=" * 70)
 
+        # Judges
         primary_judge = self._create_primary_judge()
-        secondary_judge = self._create_secondary_judge()
         refusal_judge = self._create_refusal_judge()
 
+        # PyRIT scoring config
         scoring_config = AttackScoringConfig(
             objective_scorer=primary_judge,
             refusal_scorer=refusal_judge,
-            auxiliary_scorers=[secondary_judge],
             successful_objective_threshold=self.config.objective_threshold,
             use_score_as_feedback=True,
         )
@@ -119,18 +102,15 @@ class CrescendoExperiment:
 
         try:
             # Crescendo Attack 실행
-            result = await attack.run_attack_async(objective=objective)
+            result = await attack.execute_async(objective=objective)
             conversation: List[Message] = attack.get_memory()
+
             duration = (datetime.now() - start_time).total_seconds()
             num_turns = sum(1 for m in conversation if m.role == "user")
 
             # Final Turn Summary 추출
-            if len(conversation) >= 2:
-                last_attacker = conversation[-2]
-                last_target = conversation[-1]
-            else:
-                last_attacker = None
-                last_target = None
+            last_attacker = conversation[-2] if len(conversation) >= 2 else None
+            last_target = conversation[-1] if len(conversation) >= 1 else None
 
             final_turn_summary = None
             if last_attacker and last_target:
@@ -138,27 +118,29 @@ class CrescendoExperiment:
                     "turn": num_turns,
                     "attacker": last_attacker.content,
                     "target": last_target.content,
-                    "score": getattr(result, "score", None),
                 }
 
-            # 결과 저장
+            final_score = None
+            if hasattr(result, "last_score") and result.last_score:
+                final_score = result.last_score.get_value()
+
+            # 결과 저장 및 출력
             result_dict = {
                 "task_name": task_name,
                 "objective": objective,
                 "success": result.achieved,
-                "score": getattr(result, "score", None),
+                "score": final_score,
                 "num_turns": num_turns,
                 "duration_seconds": duration,
                 "final_turn": final_turn_summary,
                 "config": self.config.to_dict(),
             }
 
-            # 결과 출력
             print("\n" + "=" * 70)
             print(f"[Task Completed] {task_name}")
             print("=" * 70)
             print(f"Success: {result.achieved}")
-            print(f"Final Score: {getattr(result, 'score', None)}")
+            print(f"Score: {final_score}")
             print(f"Turns Used: {num_turns}")
             print(f"Duration: {duration:.1f} seconds")
 
@@ -169,8 +151,6 @@ class CrescendoExperiment:
                 print(f"      {final_turn_summary['attacker'][:200]}")
                 print("  Target Response:")
                 print(f"      {final_turn_summary['target'][:200]}")
-
-            print("=" * 70)
 
             self.results.append(result_dict)
             return result_dict
@@ -196,7 +176,8 @@ class CrescendoExperiment:
             await self.run_single_task(t["objective"], t["name"])
 
 
-    def save_results(self, filename: str = None):
+    # 유틸 함수
+    def save_results(self, filename: Optional[str] = None) -> str:
         return save_results(self.results, filename)
 
     def print_summary(self):
