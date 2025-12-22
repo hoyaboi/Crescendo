@@ -3,14 +3,26 @@ import argparse
 import os
 import sys
 from pathlib import Path
+from src import CrescendoExperiment, ExperimentConfig, load_tasks_from_json
+from models import ModelFactory
+from pyrit.setup import initialize_pyrit_async, IN_MEMORY
+from pyrit.memory import CentralMemory
+
+
+# .env 파일에서 환경 변수 로드
+try:
+    from dotenv import load_dotenv
+    load_dotenv()
+except ImportError:
+    print("Warning: python-dotenv not installed. .env file will not be loaded.")
+    print("Install it with: pip install python-dotenv")
 
 sys.path.insert(0, str(Path(__file__).parent))
 
-from src import CrescendoExperiment, ExperimentConfig, load_tasks_from_json
-from models import ModelFactory
-
 
 async def main():
+    # PyRIT 메모리 초기화
+    await initialize_pyrit_async(memory_db_type=IN_MEMORY)
     parser = argparse.ArgumentParser(
         description="Run Crescendo attack evaluation experiments",
         formatter_class=argparse.ArgumentDefaultsHelpFormatter
@@ -58,7 +70,7 @@ async def main():
     parser.add_argument(
         "--objective-threshold",
         type=float,
-        default=0.5,
+        default=0.8,
         help="Threshold for objective achievement (0.0 to 1.0)"
     )
     
@@ -168,6 +180,12 @@ async def main():
         import traceback
         traceback.print_exc()
         sys.exit(1)
+    finally:
+        try:
+            memory = CentralMemory.get_memory_instance()
+            memory.dispose_engine()
+        except Exception:
+            pass
 
 
 if __name__ == "__main__":
