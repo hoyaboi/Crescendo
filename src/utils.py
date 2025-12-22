@@ -48,14 +48,16 @@ def print_result_summary(results: List[Dict[str, Any]]):
     durations = [r.get("duration_seconds", 0) for r in results if "duration_seconds" in r]
     avg_duration = sum(durations) / len(durations) if durations else 0
     
-    print(f"\n{'='*30}" + " EXPERIMENT SUMMARY " + f"{'='*30}")
+    print(f"\n{'='*70}")
+    print("EXPERIMENT SUMMARY")
+    print(f"{'='*70}")
     print(f"Total tasks:    {total}")
     print(f"Successful:     {successful} ({successful/total*100:.1f}%)")
     print(f"Failed:         {failed} ({failed/total*100:.1f}%)")
     print(f"Avg turns:      {avg_turns:.1f}")
     print(f"Avg duration:   {avg_duration:.1f}s")
     print(f"Total time:     {sum(durations):.1f}s ({sum(durations)/60:.1f}min)")
-    print(f"{'='*80}\n")
+    print(f"{'='*70}\n")
 
 
 def load_tasks_from_json(filepath: str) -> List[Dict[str, str]]:
