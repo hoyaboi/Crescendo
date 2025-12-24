@@ -70,17 +70,6 @@ class CrescendoExperiment:
         objective: str, 
         memory_labels: Optional[Dict[str, str]] = None
     ) -> Any:
-        """
-        PyRIT 표준: run_attack_async 메서드
-        공격을 실행하고 OrchestratorResult를 반환합니다.
-        
-        Args:
-            objective: 공격 목표
-            memory_labels: 메모리 라벨 (선택사항)
-        
-        Returns:
-            CrescendoAttackResult (OrchestratorResult와 호환)
-        """
         primary_judge = self._create_primary_judge()
         refusal_judge = self._create_refusal_judge()
 
@@ -105,7 +94,6 @@ class CrescendoExperiment:
             max_backtracks=self.config.max_backtracks,
         )
 
-        # memory_labels 지원 (PyRIT 표준)
         result = await attack.execute_async(
             objective=objective,
             memory_labels=memory_labels
@@ -119,17 +107,6 @@ class CrescendoExperiment:
         task_name: str,
         memory_labels: Optional[Dict[str, str]] = None
     ) -> Dict[str, Any]:
-        """
-        단일 테스크를 실행하고 결과를 반환합니다.
-        
-        Args:
-            objective: 공격 목표
-            task_name: 테스크 이름
-            memory_labels: 메모리 라벨 (선택사항)
-        
-        Returns:
-            결과 딕셔너리
-        """
         print("\n" + "=" * 70)
         print(f"[Task Started] {task_name}")
         print("Objective:")
@@ -139,7 +116,6 @@ class CrescendoExperiment:
         start_time = datetime.now()
 
         try:
-            # PyRIT 표준 메서드 사용
             result = await self.run_attack_async(objective=objective, memory_labels=memory_labels)
             
             # 대화 내용 가져오기
@@ -221,7 +197,6 @@ class CrescendoExperiment:
             await self.run_single_task(t["objective"], t["name"])
 
 
-    # 유틸 함수
     def save_results(self, filename: Optional[str] = None) -> str:
         return save_results(self.results, filename)
 
