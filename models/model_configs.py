@@ -21,9 +21,11 @@ class ModelConfig:
             raise ValueError(f"API key not found: {self.api_key_env}")
         
         if self.model_type == "openai":
+            endpoint = self.endpoint if self.endpoint else "https://api.openai.com/v1"
             return OpenAIChatTarget(
                 model_name=self.deployment_name,
                 api_key=api_key,
+                endpoint=endpoint,
             )
         
         elif self.model_type == "huggingface":
