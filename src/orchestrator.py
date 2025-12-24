@@ -153,10 +153,6 @@ class CrescendoExperiment:
                     "target": target_text,
                 }
 
-            final_score = None
-            if result.last_score:
-                final_score = result.last_score.get_value()
-
             success = result.outcome == AttackOutcome.SUCCESS
 
             # 결과 저장 및 출력
@@ -164,7 +160,6 @@ class CrescendoExperiment:
                 "task_name": task_name,
                 "objective": objective,
                 "success": success,
-                "score": final_score,
                 "num_turns": num_turns,
                 "duration_seconds": duration,
                 "final_turn": final_turn_summary,
@@ -175,7 +170,6 @@ class CrescendoExperiment:
             print(f"[Task Completed] {task_name}")
             print("=" * 70)
             print(f"Success: {success}")
-            print(f"Score: {final_score}")
             print(f"Turns Used: {num_turns}")
             print(f"Duration: {duration:.1f} seconds")
 
