@@ -128,15 +128,29 @@ class CrescendoExperiment:
             num_turns = sum(1 for m in conversation if m.role == "user")
 
             # Final Turn Summary 추출
-            last_attacker = conversation[-2] if len(conversation) >= 2 else None
-            last_target = conversation[-1] if len(conversation) >= 1 else None
+            user_messages = [m for m in conversation if m.role == "user"]
+            assistant_messages = [m for m in conversation if m.role == "assistant"]
+            
+            last_attacker = user_messages[-1] if user_messages else None
+            last_target = assistant_messages[-1] if assistant_messages else None
 
             final_turn_summary = None
             if last_attacker and last_target:
+                # Message 객체에서 텍스트 추출
+                try:
+                    attacker_text = last_attacker.get_value() if hasattr(last_attacker, 'get_value') else str(last_attacker)
+                except Exception:
+                    attacker_text = str(last_attacker)
+                
+                try:
+                    target_text = last_target.get_value() if hasattr(last_target, 'get_value') else str(last_target)
+                except Exception:
+                    target_text = str(last_target)
+                
                 final_turn_summary = {
                     "turn": num_turns,
-                    "attacker": last_attacker.get_value(),
-                    "target": last_target.get_value(),
+                    "attacker": attacker_text,
+                    "target": target_text,
                 }
 
             final_score = None
