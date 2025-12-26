@@ -8,6 +8,8 @@ from pyrit.executor.attack.core import (
     AttackConverterConfig,
     AttackScoringConfig,
 )
+from pyrit.prompt_converter import EmojiConverter
+from pyrit.prompt_normalizer import PromptConverterConfiguration
 from pyrit.score import (
     SelfAskRefusalScorer,
     SelfAskScaleScorer,
@@ -85,11 +87,14 @@ class CrescendoExperiment:
             system_prompt_path=None,
         )
 
+        converters = PromptConverterConfiguration.from_converters(converters=[EmojiConverter()])
+        converter_config = AttackConverterConfig(request_converters=converters)
+
         attack = CrescendoAttack(
             objective_target=self.targets["target"],
             attack_adversarial_config=adversarial_config,
             attack_scoring_config=scoring_config,
-            attack_converter_config=AttackConverterConfig(),
+            attack_converter_config=converter_config,
             max_turns=self.config.max_turns,
             max_backtracks=self.config.max_backtracks,
         )
