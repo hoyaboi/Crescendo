@@ -1,5 +1,6 @@
 import asyncio
 from datetime import datetime
+from types import NoneType
 from typing import Dict, Any, List, Optional, MutableSequence
 
 from pyrit.executor.attack.multi_turn.crescendo import CrescendoAttack
@@ -82,10 +83,7 @@ class CrescendoExperiment:
             use_score_as_feedback=True,
         )
 
-        adversarial_config = AttackAdversarialConfig(
-            target=self.targets["attacker"],
-            system_prompt_path=None,
-        )
+        adversarial_config = AttackAdversarialConfig(target=self.targets["attacker"])
 
         converters = PromptConverterConfiguration.from_converters(converters=[EmojiConverter()])
         converter_config = AttackConverterConfig(request_converters=converters)
@@ -141,11 +139,12 @@ class CrescendoExperiment:
 
             final_turn_summary = None
             if last_attacker and last_target:
-                # Message 객체에서 텍스트 추출
                 try:
-                    attacker_text = last_attacker.get_value() if hasattr(last_attacker, 'get_value') else str(last_attacker)
+                    attacker_original = last_attacker.message_pieces[0].original_value if last_attacker.message_pieces else NoneType
+                    attacker_converted = last_attacker.get_value() if hasattr(last_attacker, 'get_value') else str(last_attacker)
                 except Exception:
-                    attacker_text = str(last_attacker)
+                    attacker_original = None
+                    attacker_converted = str(last_attacker)
                 
                 try:
                     target_text = last_target.get_value() if hasattr(last_target, 'get_value') else str(last_target)
@@ -154,7 +153,8 @@ class CrescendoExperiment:
                 
                 final_turn_summary = {
                     "turn": num_turns,
-                    "attacker": attacker_text,
+                    "attacker_original": attacker_original,
+                    "attacker_converted": attacker_converted,
                     "target": target_text,
                 }
 
@@ -181,8 +181,11 @@ class CrescendoExperiment:
             if final_turn_summary:
                 print("\nFinal Turn Summary:")
                 print(f"  Turn {final_turn_summary['turn']}")
-                print("  Attacker Prompt:")
-                print(f"      {final_turn_summary['attacker'][:200]}")
+                if final_turn_summary.get('attacker_original'):
+                    print("  Original Prompt:")
+                    print(f"      {final_turn_summary['attacker_original'][:200]}")
+                print("  Attacker Prompt (Converted):")
+                print(f"      {final_turn_summary['attacker_converted'][:200]}")
                 print("  Target Response:")
                 print(f"      {final_turn_summary['target'][:200]}")
 
