@@ -33,6 +33,46 @@ def save_results(results: List[Dict[str, Any]], filename: Optional[str] = None) 
     return filepath
 
 
+def append_result_to_file(result: Dict[str, Any], filepath: str) -> None:
+    dirs = create_output_dir()
+    
+    if os.path.exists(filepath):
+        try:
+            with open(filepath, 'r', encoding='utf-8') as f:
+                results = json.load(f)
+        except (json.JSONDecodeError, FileNotFoundError):
+            results = []
+    else:
+        results = []
+    
+    results.append(result)
+    
+    with open(filepath, 'w', encoding='utf-8') as f:
+        json.dump(results, f, ensure_ascii=False, indent=2)
+
+
+def save_turn_logs(task_name: str, turn_history: List[Dict[str, Any]], filename: Optional[str] = None) -> str:
+    dirs = create_output_dir()
+    
+    if filename is None:
+        timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+        safe_task_name = "".join(c for c in task_name if c.isalnum() or c in (' ', '-', '_')).strip().replace(' ', '_')
+        filename = f"turn_logs_{safe_task_name}_{timestamp}.json"
+    
+    filepath = os.path.join(dirs["logs"], filename)
+    
+    log_data = {
+        "task_name": task_name,
+        "timestamp": datetime.now().isoformat(),
+        "turn_history": turn_history,
+    }
+    
+    with open(filepath, 'w', encoding='utf-8') as f:
+        json.dump(log_data, f, ensure_ascii=False, indent=2)
+    
+    return filepath
+
+
 def print_result_summary(results: List[Dict[str, Any]]):
     if not results:
         print("No results to summarize.")

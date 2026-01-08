@@ -9,9 +9,11 @@ Crescendo 공격은 점진적으로 모델을 유도하여 유해한 콘텐츠�
 ## 주요 기능
 
 - Crescendo 공격 실행 및 평가
-- OpenAI 및 HuggingFace 모델 지원
+- OpenAI, HuggingFace, Anthropic Claude 모델 지원
+- 원격 서버 모델 지원 (vLLM 등)
 - 다중 테스크 일괄 처리
-- 결과 자동 저장 및 요약
+- 각 턴의 상세 로깅 (원본/변환 프롬프트, 응답)
+- 결과 자동 저장 및 요약 (각 테스크마다 incremental save)
 - .env 파일을 통한 API 키 관리
 
 ## 설치
@@ -39,6 +41,12 @@ OPENAI_API_KEY=your-openai-api-key
 
 # HuggingFace (HuggingFace 모델 사용 시)
 HUGGINGFACE_TOKEN=your-huggingface-token
+
+# Anthropic API (Claude 모델 사용 시)
+ANTHROPIC_API_KEY=your-anthropic-api-key
+
+# Remote Server (원격 서버 모델 사용 시, 선택사항)
+REMOTE_API_KEY=your-remote-api-key-if-needed
 ```
 
 ## 사용법
@@ -122,48 +130,77 @@ python crescendo_eval.py --check-keys
 
 ### OpenAI 모델
 
-- gpt-4
-- gpt-4o
-- gpt-4o-mini
-- gpt-3.5-turbo
+- `gpt-4`: GPT-4
+- `gpt-4o`: GPT-4o
+- `gpt-4o-mini`: GPT-4o-mini
+- `gpt-3.5-turbo`: GPT-3.5 Turbo
 
-### HuggingFace 모델
+### HuggingFace 모델 (로컬 실행)
 
-- llama-2-7b
-- llama-2-70b
-- llama-3-8b
-- llama-3-70b
+- `llama-2-7b`: LLaMA-2-7B
+- `llama-2-70b`: LLaMA-2-70B
+- `llama-3-8b`: LLaMA-3-8B
+- `llama-3-70b`: LLaMA-3-70B
+
+### 원격 서버 모델 (vLLM 등)
+
+- `llama-3-8b-remote`: LLaMA-3-8B (원격 서버, OpenAI 호환 API)
+
+### Anthropic Claude 모델
+
+- `claude-3-5-sonnet`: Claude 3.5 Sonnet
+- `claude-3-opus`: Claude 3 Opus
+- `claude-3-haiku`: Claude 3 Haiku
+- `claude-sonnet-4`: Claude Sonnet 4
 
 사용 가능한 모든 모델은 `--list-models` 옵션으로 확인할 수 있습니다.
 
 ## 결과
 
-실험 결과는 `outputs/results/` 디렉토리에 JSON 형식으로 저장됩니다. 각 결과 파일에는 다음 정보가 포함됩니다:
+### 결과 파일
+
+실험 결과는 `outputs/results/` 디렉토리에 JSON 형식으로 저장됩니다. **각 테스크가 완료될 때마다 자동으로 저장**되므로, 중간에 프로그램이 중단되어도 지금까지의 결과는 보존됩니다.
+
+각 결과 파일에는 다음 정보가 포함됩니다:
 
 - 테스크 이름 및 목표
 - 성공 여부 (Success)
 - 사용된 턴 수
 - 실행 시간
 - 최종 턴 요약 (Attacker Prompt, Target Response)
+- **턴 히스토리** (`turn_history`): 모든 턴의 상세 정보
+  - 각 턴의 원본 프롬프트 (`attacker_original`)
+  - 각 턴의 변환된 프롬프트 (`attacker_converted`, 이모지 변환 등)
+  - 각 턴의 타겟 응답 (`target_response`)
 - 실험 설정
+
+### 로깅 파일
+
+각 테스크의 상세 로깅은 `outputs/logs/` 디렉토리에 별도로 저장됩니다:
+
+- 파일명 형식: `turn_logs_{task_name}_{timestamp}.json`
+- 각 턴의 상세 정보 (원본/변환 프롬프트, 응답)
+- 백트래킹은 제외하고 실제 턴만 기록
 
 ## 프로젝트 구조
 
 ```
 crescendo/
-├── crescendo_eval.py      # 메인 실행 스크립트
+├── crescendo_eval.py           # 메인 실행 스크립트
 ├── src/
-│   ├── orchestrator.py    # CrescendoExperiment 클래스
-│   └── utils.py           # 유틸리티 함수
+│   ├── orchestrator.py        # CrescendoExperiment 클래스
+│   └── utils.py               # 유틸리티 함수 (결과 저장, 로깅)
 ├── models/
-│   ├── model_configs.py   # 모델 설정
-│   └── model_factory.py   # 모델 팩토리
+│   ├── model_configs.py       # 모델 설정
+│   ├── model_factory.py       # 모델 팩토리
+│   └── anthropic_chat_target.py  # Anthropic Claude 지원
 ├── data/
-│   └── custom_tasks.json  # 테스크 정의
+│   └── custom_tasks.json      # 테스크 정의
 ├── outputs/
-│   └── results/          # 결과 저장 디렉토리
-├── requirements.txt       # 의존성 목록
-└── README.md             # 이 파일
+│   ├── results/               # 결과 저장 디렉토리
+│   └── logs/                 # 턴 로깅 저장 디렉토리
+├── requirements.txt           # 의존성 목록
+└── README.md                  # 이 파일
 ```
 
 ## 요구사항
@@ -172,3 +209,4 @@ crescendo/
 - PyRIT 프레임워크
 - OpenAI API 키 (OpenAI 모델 사용 시)
 - HuggingFace 토큰 (HuggingFace 모델 사용 시)
+- Anthropic API 키 (Claude 모델 사용 시)
