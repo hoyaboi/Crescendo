@@ -4,6 +4,7 @@ import os
 
 from pyrit.prompt_target import OpenAIChatTarget
 from pyrit.prompt_target import HuggingFaceChatTarget
+from .anthropic_chat_target import AnthropicChatTarget
 
 
 @dataclass
@@ -17,7 +18,8 @@ class ModelConfig:
     
     def to_target(self):
         api_key = os.getenv(self.api_key_env)
-        if not api_key:
+        
+        if not api_key and self.model_type not in ["remote-openai", "anthropic"]:
             raise ValueError(f"API key not found: {self.api_key_env}")
         
         if self.model_type == "openai":
@@ -28,6 +30,16 @@ class ModelConfig:
                 endpoint=endpoint,
             )
         
+        elif self.model_type == "remote-openai":
+            if not self.endpoint:
+                raise ValueError(f"endpoint is required for remote-openai model type")
+            api_key_value = api_key if api_key else "dummy-key"
+            return OpenAIChatTarget(
+                model_name=self.deployment_name,
+                api_key=api_key_value,
+                endpoint=self.endpoint,
+            )
+        
         elif self.model_type == "huggingface":
             return HuggingFaceChatTarget(
                 model_id=self.deployment_name,
@@ -35,6 +47,13 @@ class ModelConfig:
                 use_cuda=True,
                 trust_remote_code=True,
                 max_new_tokens=256
+            )
+        
+        elif self.model_type == "anthropic":
+            return AnthropicChatTarget(
+                model_name=self.deployment_name,
+                api_key=api_key,
+                max_tokens=4096  # Claude는 더 긴 응답을 지원
             )
         
         else:
@@ -93,5 +112,40 @@ AVAILABLE_MODELS = {
         model_type="huggingface",
         deployment_name="meta-llama/Meta-Llama-3-8B-Instruct",
         api_key_env="HUGGINGFACE_TOKEN"
+    ),
+    
+    # Remote Server Models
+    "llama-3-8b-remote": ModelConfig(
+        name="LLaMA-3-8B-Remote",
+        model_type="remote-openai",
+        deployment_name="meta-llama/Meta-Llama-3-8B-Instruct",
+        api_key_env="REMOTE_API_KEY",
+        endpoint="REMOTE_SERVER_ENDPOINT"
+    ),
+    
+    # Anthropic Claude Models
+    "claude-3-5-sonnet": ModelConfig(
+        name="Claude-3.5-Sonnet",
+        model_type="anthropic",
+        deployment_name="claude-3-5-sonnet-20241022",
+        api_key_env="ANTHROPIC_API_KEY"
+    ),
+    "claude-3-opus": ModelConfig(
+        name="Claude-3-Opus",
+        model_type="anthropic",
+        deployment_name="claude-3-opus-20240229",
+        api_key_env="ANTHROPIC_API_KEY"
+    ),
+    "claude-3-haiku": ModelConfig(
+        name="Claude-3-Haiku",
+        model_type="anthropic",
+        deployment_name="claude-3-haiku-20240307",
+        api_key_env="ANTHROPIC_API_KEY"
+    ),
+    "claude-sonnet-4": ModelConfig(
+        name="Claude-Sonnet-4",
+        model_type="anthropic",
+        deployment_name="claude-sonnet-4-20250514",
+        api_key_env="ANTHROPIC_API_KEY"
     ),
 }
