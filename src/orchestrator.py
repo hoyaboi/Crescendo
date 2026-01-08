@@ -183,9 +183,7 @@ class CrescendoExperiment:
             
             if self.results_filepath:
                 append_result_to_file(result_dict, self.results_filepath)
-                print(f"Result saved incrementally to: {self.results_filepath}")
-            
-            print(f"Turn logs saved to: {log_filepath}")
+
             return result_dict
 
         except Exception as e:
@@ -217,10 +215,6 @@ class CrescendoExperiment:
         return save_results(self.results, filename)
 
     def _extract_turn_history(self, conversation: MutableSequence[Message]) -> List[Dict[str, Any]]:
-        """
-        대화 기록에서 각 턴의 정보를 추출
-        백트래킹은 제외하고 실제 턴만 추출
-        """
         turn_history = []
         turn_number = 0
         
