@@ -2,6 +2,7 @@ import asyncio
 import argparse
 import os
 import sys
+from datetime import datetime
 from pathlib import Path
 from src import CrescendoExperiment, ExperimentConfig, load_tasks_from_json
 from models import ModelFactory
@@ -152,22 +153,32 @@ async def main():
             objective_threshold=args.objective_threshold,
         )
         
-        # 3. 실험 인스턴스 생성
-        experiment = CrescendoExperiment(config=config, targets=targets)
+        # 3. 결과 파일 경로 생성
+        from src.utils import create_output_dir
+        dirs = create_output_dir()
+        if args.output_file is None:
+            timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+            results_filename = f"crescendo_results_{timestamp}.json"
+        else:
+            results_filename = args.output_file
+        results_filepath = os.path.join(dirs["results"], results_filename)
+        print(f"\nResults will be saved incrementally to: {results_filepath}")
         
-        # 4. Task 로드
+        # 4. 실험 인스턴스 생성
+        experiment = CrescendoExperiment(config=config, targets=targets, results_filepath=results_filepath)
+        
+        # 5. Task 로드
         tasks = load_tasks_from_json(args.tasks_file)
         print(f"\nStarting evaluation with {len(tasks)} tasks...\n")
         
-        # 5. 실험 실행
+        # 6. 실험 실행
         await experiment.run_multiple_tasks(tasks)
         
-        # 6. 결과 요약 출력
+        # 7. 결과 요약 출력
         experiment.print_summary()
         
-        # 7. 결과 저장
-        output_path = experiment.save_results(filename=args.output_file)
-        print(f"\nEvaluation completed! Results saved to: {output_path}")
+        # 8. 최종 결과 저장
+        print(f"\nEvaluation completed! All results saved to: {results_filepath}")
         
     except KeyboardInterrupt:
         print("\n\nEvaluation interrupted by user.")

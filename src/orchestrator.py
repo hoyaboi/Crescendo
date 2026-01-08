@@ -19,7 +19,7 @@ from pyrit.score import (
 from pyrit.models import AttackOutcome, Message
 from pyrit.memory.central_memory import CentralMemory
 
-from .utils import save_results, print_result_summary, print_task_progress
+from .utils import save_results, save_turn_logs, append_result_to_file, print_result_summary, print_task_progress
 
 
 class ExperimentConfig:
@@ -46,10 +46,11 @@ class ExperimentConfig:
 
 
 class CrescendoExperiment:
-    def __init__(self, config: ExperimentConfig, targets: Dict[str, Any]):
+    def __init__(self, config: ExperimentConfig, targets: Dict[str, Any], results_filepath: Optional[str] = None):
         self.config = config
         self.targets = targets
         self.results: List[Dict[str, Any]] = []
+        self.results_filepath = results_filepath  # 결과 파일 경로 저장
 
 
     # 판단 모듈
@@ -128,34 +129,20 @@ class CrescendoExperiment:
             )
 
             duration = (datetime.now() - start_time).total_seconds()
-            num_turns = sum(1 for m in conversation if m.role == "user")
+            
+            # 각 턴의 상세 정보 추출
+            turn_history = self._extract_turn_history(conversation)
+            num_turns = len(turn_history)
 
             # Final Turn Summary 추출
-            user_messages = [m for m in conversation if m.role == "user"]
-            assistant_messages = [m for m in conversation if m.role == "assistant"]
-            
-            last_attacker = user_messages[-1] if user_messages else None
-            last_target = assistant_messages[-1] if assistant_messages else None
-
             final_turn_summary = None
-            if last_attacker and last_target:
-                try:
-                    attacker_original = last_attacker.message_pieces[0].original_value if last_attacker.message_pieces else NoneType
-                    attacker_converted = last_attacker.get_value() if hasattr(last_attacker, 'get_value') else str(last_attacker)
-                except Exception:
-                    attacker_original = None
-                    attacker_converted = str(last_attacker)
-                
-                try:
-                    target_text = last_target.get_value() if hasattr(last_target, 'get_value') else str(last_target)
-                except Exception:
-                    target_text = str(last_target)
-                
+            if turn_history:
+                last_turn = turn_history[-1]
                 final_turn_summary = {
-                    "turn": num_turns,
-                    "attacker_original": attacker_original,
-                    "attacker_converted": attacker_converted,
-                    "target": target_text,
+                    "turn": last_turn["turn"],
+                    "attacker_original": last_turn["attacker_original"],
+                    "attacker_converted": last_turn["attacker_converted"],
+                    "target": last_turn["target_response"],
                 }
 
             success = result.outcome == AttackOutcome.SUCCESS
@@ -168,8 +155,11 @@ class CrescendoExperiment:
                 "num_turns": num_turns,
                 "duration_seconds": duration,
                 "final_turn": final_turn_summary,
+                "turn_history": turn_history, 
                 "config": self.config.to_dict(),
             }
+            
+            log_filepath = save_turn_logs(task_name, turn_history)
 
             print("\n" + "=" * 70)
             print(f"[Task Completed] {task_name}")
@@ -190,6 +180,12 @@ class CrescendoExperiment:
                 print(f"      {final_turn_summary['target'][:200]}")
 
             self.results.append(result_dict)
+            
+            if self.results_filepath:
+                append_result_to_file(result_dict, self.results_filepath)
+                print(f"Result saved incrementally to: {self.results_filepath}")
+            
+            print(f"Turn logs saved to: {log_filepath}")
             return result_dict
 
         except Exception as e:
@@ -202,6 +198,10 @@ class CrescendoExperiment:
                 "config": self.config.to_dict(),
             }
             self.results.append(err)
+            
+            if self.results_filepath:
+                append_result_to_file(err, self.results_filepath)
+            
             return err
 
 
@@ -215,6 +215,63 @@ class CrescendoExperiment:
 
     def save_results(self, filename: Optional[str] = None) -> str:
         return save_results(self.results, filename)
+
+    def _extract_turn_history(self, conversation: MutableSequence[Message]) -> List[Dict[str, Any]]:
+        """
+        대화 기록에서 각 턴의 정보를 추출
+        백트래킹은 제외하고 실제 턴만 추출
+        """
+        turn_history = []
+        turn_number = 0
+        
+        i = 0
+        while i < len(conversation):
+            msg = conversation[i]
+            
+            # User 메시지 (attacker prompt) 찾기
+            if msg.role == "user" or (hasattr(msg, 'message_pieces') and msg.message_pieces and 
+                                      any(mp.role == "user" for mp in msg.message_pieces)):
+                turn_number += 1
+                
+                # Attacker prompt 추출
+                try:
+                    if hasattr(msg, 'message_pieces') and msg.message_pieces:
+                        attacker_original = msg.message_pieces[0].original_value if msg.message_pieces else None
+                        attacker_converted = msg.get_value() if hasattr(msg, 'get_value') else str(msg)
+                    else:
+                        attacker_original = None
+                        attacker_converted = str(msg)
+                except Exception:
+                    attacker_original = None
+                    attacker_converted = str(msg)
+                
+                # 다음 Assistant 메시지 찾기 (target response)
+                target_response = None
+                j = i + 1
+                while j < len(conversation):
+                    next_msg = conversation[j]
+                    if next_msg.role == "assistant" or (hasattr(next_msg, 'message_pieces') and 
+                                                        next_msg.message_pieces and
+                                                        any(mp.role == "assistant" for mp in next_msg.message_pieces)):
+                        try:
+                            target_response = next_msg.get_value() if hasattr(next_msg, 'get_value') else str(next_msg)
+                        except Exception:
+                            target_response = str(next_msg)
+                        break
+                    j += 1
+                
+                # 턴 정보 저장
+                turn_info = {
+                    "turn": turn_number,
+                    "attacker_original": attacker_original,
+                    "attacker_converted": attacker_converted,
+                    "target_response": target_response,
+                }
+                turn_history.append(turn_info)
+            
+            i += 1
+        
+        return turn_history
 
     def print_summary(self):
         print_result_summary(self.results)
