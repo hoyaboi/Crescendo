@@ -31,13 +31,22 @@ class ModelConfig:
             )
         
         elif self.model_type == "remote-openai":
-            if not self.endpoint:
-                raise ValueError(f"endpoint is required for remote-openai model type")
+            if self.endpoint and not self.endpoint.startswith("http"):
+                endpoint = os.getenv(self.endpoint)
+                if not endpoint:
+                    raise ValueError(
+                        f"endpoint is required for remote-openai model type. "
+                        f"Set {self.endpoint} environment variable or configure endpoint in model config."
+                    )
+            else:
+                endpoint = self.endpoint
+                if not endpoint:
+                    raise ValueError(f"endpoint is required for remote-openai model type")
             api_key_value = api_key if api_key else "dummy-key"
             return OpenAIChatTarget(
                 model_name=self.deployment_name,
                 api_key=api_key_value,
-                endpoint=self.endpoint,
+                endpoint=endpoint,
             )
         
         elif self.model_type == "huggingface":

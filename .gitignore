@@ -4,3 +4,5 @@ __pycache__/
 .vscode/
 pyrightconfig.json
 src/pyrit/
+data/claude.json
+data/llama.json
