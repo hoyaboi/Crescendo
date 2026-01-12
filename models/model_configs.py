@@ -1,6 +1,7 @@
 from dataclasses import dataclass
 from typing import Optional, Any
 import os
+import torch
 
 from pyrit.prompt_target import OpenAIChatTarget
 from pyrit.prompt_target import HuggingFaceChatTarget
@@ -55,14 +56,16 @@ class ModelConfig:
                 hf_access_token=api_key,
                 use_cuda=True,
                 trust_remote_code=True,
-                max_new_tokens=256
+                max_new_tokens=256,
+                device_map="auto",
+                torch_dtype=torch.float16 if torch.cuda.is_available() else None
             )
         
         elif self.model_type == "anthropic":
             return AnthropicChatTarget(
                 model_name=self.deployment_name,
                 api_key=api_key,
-                max_tokens=4096  # Claude는 더 긴 응답을 지원
+                max_tokens=4096
             )
         
         else:
