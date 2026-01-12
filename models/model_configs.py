@@ -131,6 +131,13 @@ AVAILABLE_MODELS = {
         api_key_env="REMOTE_API_KEY",
         endpoint="REMOTE_SERVER_ENDPOINT"
     ),
+    "llama-2-7b-remote": ModelConfig(
+        name="LLaMA-2-7B-Remote",
+        model_type="remote-openai",
+        deployment_name="meta-llama/Llama-2-7b-chat-hf",
+        api_key_env="REMOTE_API_KEY",
+        endpoint="REMOTE_SERVER_ENDPOINT"
+    ),
     
     # Anthropic Claude Models
     "claude-3-5-sonnet": ModelConfig(
