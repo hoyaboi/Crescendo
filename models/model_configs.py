@@ -19,7 +19,7 @@ class ModelConfig:
     def to_target(self):
         api_key = os.getenv(self.api_key_env)
         
-        if not api_key and self.model_type not in ["remote-openai", "anthropic"]:
+        if not api_key and self.model_type not in ["remote-openai", "anthropic", "huggingface"]:
             raise ValueError(f"API key not found: {self.api_key_env}")
         
         if self.model_type == "openai":

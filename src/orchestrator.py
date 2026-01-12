@@ -32,6 +32,7 @@ class ExperimentConfig:
         max_turns: int = 10,
         max_backtracks: int = 10,
         objective_threshold: float = 0.8,
+        use_converter: bool = True,
     ):
         self.target_model = target_model
         self.attacker_model = attacker_model
@@ -40,6 +41,7 @@ class ExperimentConfig:
         self.max_turns = max_turns
         self.max_backtracks = max_backtracks
         self.objective_threshold = objective_threshold
+        self.use_converter = use_converter
 
     def to_dict(self) -> Dict[str, Any]:
         return self.__dict__
@@ -86,8 +88,11 @@ class CrescendoExperiment:
 
         adversarial_config = AttackAdversarialConfig(target=self.targets["attacker"])
 
-        converters = PromptConverterConfiguration.from_converters(converters=[EmojiConverter()])
-        converter_config = AttackConverterConfig(request_converters=converters)
+        if self.config.use_converter:
+            converters = PromptConverterConfiguration.from_converters(converters=[EmojiConverter()])
+            converter_config = AttackConverterConfig(request_converters=converters)
+        else:
+            converter_config = AttackConverterConfig()
 
         attack = CrescendoAttack(
             objective_target=self.targets["target"],

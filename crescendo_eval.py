@@ -74,6 +74,11 @@ async def main():
         default=0.8,
         help="Threshold for objective achievement (0.0 to 1.0)"
     )
+    parser.add_argument(
+        "--no-converter",
+        action="store_true",
+        help="Disable prompt converter (default: converter is enabled)"
+    )
     
     # Task 파일 설정
     parser.add_argument(
@@ -129,13 +134,14 @@ async def main():
     print(f"  Max Turns:           {args.max_turns}")
     print(f"  Max Backtracks:      {args.max_backtracks}")
     print(f"  Objective Threshold: {args.objective_threshold}")
+    print(f"  Use Converter:       {not args.no_converter}")
     print(f"  Tasks File:          {args.tasks_file}\n")
     print("="*70)
     
     experiment = None
     try:
         # 1. 모델 타겟 생성
-        targets = ModelFactory.create_targets(
+        targets = await ModelFactory.create_targets(
             target_model=args.target_model,
             attack_model=args.attacker_model,
             judge_model=args.judge_model,
@@ -151,6 +157,7 @@ async def main():
             max_turns=args.max_turns,
             max_backtracks=args.max_backtracks,
             objective_threshold=args.objective_threshold,
+            use_converter=not args.no_converter,
         )
         
         # 3. 결과 파일 경로 생성

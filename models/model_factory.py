@@ -18,7 +18,7 @@ class ModelFactory:
     
 
     @staticmethod
-    def create_targets(target_model: str, attack_model: str, judge_model: str, refusal_judge_model: str) -> Dict:
+    async def create_targets(target_model: str, attack_model: str, judge_model: str, refusal_judge_model: str) -> Dict:
         # 모델 객체 생성
         print(f"\nCreating model targets...")
         print(f"   Target:         {target_model}")
@@ -27,16 +27,54 @@ class ModelFactory:
         print(f"   Refusal Judge:  {refusal_judge_model}")
         
         try:
-            targets = {
-                "target": ModelFactory.get_model_config(target_model).to_target(),
-                "attacker": ModelFactory.get_model_config(attack_model).to_target(),
-                "judge": ModelFactory.get_model_config(judge_model).to_target(),
-                "refusal_judge": ModelFactory.get_model_config(refusal_judge_model).to_target(),
-            }
+            import asyncio
+            targets = {}
+            for name, model_key in [("target", target_model), ("attacker", attack_model), 
+                                   ("judge", judge_model), ("refusal_judge", refusal_judge_model)]:
+                try:
+                    print(f"   Creating {name} ({model_key})...")
+                    target = ModelFactory.get_model_config(model_key).to_target()
+                    targets[name] = target
+                    
+                    # HuggingFace 모델인 경우 모델 로딩 완료 대기
+                    if hasattr(target, "load_model_and_tokenizer_task"):
+                        print(f"   Waiting for {name} model to load (this may take several minutes)...")
+                        try:
+                            # 타임아웃 설정 (30분)
+                            await asyncio.wait_for(target.load_model_and_tokenizer_task, timeout=1800)
+                            print(f"   ✓ {name} model loaded successfully")
+                            
+                            # GPU 사용 확인
+                            if hasattr(target, "model") and hasattr(target, "device"):
+                                if target.device == "cuda":
+                                    import torch
+                                    if torch.cuda.is_available():
+                                        memory_gb = torch.cuda.memory_allocated(0) / 1024**3
+                                        print(f"   ✓ {name} model is on GPU (memory: {memory_gb:.2f} GB)")
+                                else:
+                                    print(f"   ⚠ Warning: {name} model is on {target.device}, not GPU")
+                        except asyncio.TimeoutError:
+                            print(f"   ✗ Error: {name} model loading timed out after 30 minutes")
+                            raise
+                        except Exception as e:
+                            print(f"   ✗ Error loading {name} model: {e}")
+                            import traceback
+                            traceback.print_exc()
+                            raise
+                    else:
+                        print(f"   ✓ {name} created")
+                except Exception as e:
+                    print(f"   ✗ Error creating {name} ({model_key}): {e}")
+                    import traceback
+                    traceback.print_exc()
+                    raise
+            
             print(f"All targets created successfully\n")
             return targets
         except Exception as e:
             print(f"Error creating targets: {str(e)}\n")
+            import traceback
+            traceback.print_exc()
             raise
     
 
