@@ -83,6 +83,14 @@ python crescendo_eval.py \
 python crescendo_eval.py --tasks-file data/your_tasks.json
 ```
 
+### 프롬프트 변환기 제어
+
+기본적으로 이모지 변환기(EmojiConverter)가 활성화되어 있습니다. 변환기를 비활성화하려면:
+
+```bash
+python crescendo_eval.py --no-converter
+```
+
 ### 유틸리티 명령어
 
 ```bash
@@ -107,6 +115,7 @@ python crescendo_eval.py --check-keys
 - `--max-turns`: 최대 턴 수 (기본값: 10)
 - `--max-backtracks`: 최대 백트래킹 횟수 (기본값: 10)
 - `--objective-threshold`: 목표 달성 임계값 (기본값: 0.8)
+- `--no-converter`: 프롬프트 변환기 비활성화 (기본값: 변환기 사용)
 
 ### 파일 설정
 
