@@ -141,6 +141,13 @@ AVAILABLE_MODELS = {
         api_key_env="REMOTE_API_KEY",
         endpoint="REMOTE_SERVER_ENDPOINT"
     ),
+    "qwen-2.5-7b-remote": ModelConfig(
+        name="Qwen-2.5-7B-Instruct-Remote",
+        model_type="remote-openai",
+        deployment_name="Qwen/Qwen2.5-7B-Instruct",
+        api_key_env="REMOTE_API_KEY",
+        endpoint="REMOTE_SERVER_ENDPOINT"
+    ),
     
     # Anthropic Claude Models
     "claude-3-5-sonnet": ModelConfig(
