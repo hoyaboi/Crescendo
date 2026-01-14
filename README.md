@@ -15,8 +15,7 @@ Crescendo 공격은 점진적으로 모델을 유도하여 유해한 콘텐츠�
 ## 주요 기능
 
 - Crescendo 공격 실행 및 평가
-- OpenAI, HuggingFace, Anthropic Claude 모델 지원
-- 원격 서버 모델 지원 (vLLM 등)
+- OpenAI, HuggingFace 모델 지원
 - 다중 테스크 일괄 처리
 - 각 턴의 상세 로깅 (원본/변환 프롬프트, 응답)
 - 결과 자동 저장 및 요약 (각 테스크마다 incremental save)
@@ -47,12 +46,6 @@ OPENAI_API_KEY=your-openai-api-key
 
 # HuggingFace (HuggingFace 모델 사용 시)
 HUGGINGFACE_TOKEN=your-huggingface-token
-
-# Anthropic API (Claude 모델 사용 시)
-ANTHROPIC_API_KEY=your-anthropic-api-key
-
-# Remote Server (원격 서버 모델 사용 시, 선택사항)
-REMOTE_API_KEY=your-remote-api-key-if-needed
 ```
 
 ## 사용법
@@ -143,32 +136,14 @@ python crescendo_eval.py --check-keys
 
 ## 지원 모델
 
-### OpenAI 모델
+현재 다음 모델을 지원합니다:
 
-- `gpt-4`: GPT-4
-- `gpt-4o`: GPT-4o
-- `gpt-4o-mini`: GPT-4o-mini
-- `gpt-3.5-turbo`: GPT-3.5 Turbo
-
-### HuggingFace 모델 (로컬 실행)
-
-- `llama-2-7b`: LLaMA-2-7B
-- `llama-2-70b`: LLaMA-2-70B
-- `llama-3-8b`: LLaMA-3-8B
-- `llama-3-70b`: LLaMA-3-70B
-
-### 원격 서버 모델 (vLLM 등)
-
-- `llama-3-8b-remote`: LLaMA-3-8B (원격 서버, OpenAI 호환 API)
-
-### Anthropic Claude 모델
-
-- `claude-3-5-sonnet`: Claude 3.5 Sonnet
-- `claude-3-opus`: Claude 3 Opus
-- `claude-3-haiku`: Claude 3 Haiku
-- `claude-sonnet-4`: Claude Sonnet 4
+- **OpenAI**: `gpt-4`, `gpt-4o`, `gpt-4o-mini`, `gpt-3.5-turbo`
+- **HuggingFace**: `llama-2-7b`, `llama-2-70b`, `llama-3-8b`, `llama-3-70b`
 
 사용 가능한 모든 모델은 `--list-models` 옵션으로 확인할 수 있습니다.
+
+새로운 모델을 추가하려면 `models/model_configs.py` 파일의 주석을 참고하세요.
 
 ## 결과
 
@@ -207,8 +182,7 @@ crescendo/
 │   └── utils.py               # 유틸리티 함수 (결과 저장, 로깅)
 ├── models/
 │   ├── model_configs.py       # 모델 설정
-│   ├── model_factory.py       # 모델 팩토리
-│   └── anthropic_chat_target.py  # Anthropic Claude 지원
+│   └── model_factory.py       # 모델 팩토리
 ├── data/
 │   └── custom_tasks.json      # 테스크 정의
 ├── outputs/
@@ -224,4 +198,3 @@ crescendo/
 - PyRIT 프레임워크
 - OpenAI API 키 (OpenAI 모델 사용 시)
 - HuggingFace 토큰 (HuggingFace 모델 사용 시)
-- Anthropic API 키 (Claude 모델 사용 시)
