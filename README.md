@@ -6,6 +6,12 @@ Crescendo 공격 평가를 위한 실험 프레임워크입니다. PyRIT의 Cres
 
 Crescendo 공격은 점진적으로 모델을 유도하여 유해한 콘텐츠를 생성하도록 하는 전략입니다. 이 프로젝트는 Crescendo 공격을 체계적으로 평가하고 결과를 저장하는 도구를 제공합니다.
 
+## Reference
+
+이 프로젝트는 다음 논문에서 제안된 Crescendo 공격을 구현 및 평가합니다.
+
+> **Great, Now Write an Article About That: The Crescendo Multi-Turn LLM Jailbreak Attack**
+
 ## 주요 기능
 
 - Crescendo 공격 실행 및 평가
