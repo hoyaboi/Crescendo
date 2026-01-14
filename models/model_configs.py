@@ -6,6 +6,7 @@ import torch
 from pyrit.prompt_target import OpenAIChatTarget
 from pyrit.prompt_target import HuggingFaceChatTarget
 from .anthropic_chat_target import AnthropicChatTarget
+from .gemini_chat_target import GeminiChatTarget
 
 
 @dataclass
@@ -20,7 +21,7 @@ class ModelConfig:
     def to_target(self):
         api_key = os.getenv(self.api_key_env)
         
-        if not api_key and self.model_type not in ["remote-openai", "anthropic", "huggingface"]:
+        if not api_key and self.model_type not in ["remote-openai", "anthropic", "huggingface", "gemini"]:
             raise ValueError(f"API key not found: {self.api_key_env}")
         
         if self.model_type == "openai":
@@ -66,6 +67,13 @@ class ModelConfig:
                 model_name=self.deployment_name,
                 api_key=api_key,
                 max_tokens=4096
+            )
+        
+        elif self.model_type == "gemini":
+            return GeminiChatTarget(
+                model_name=self.deployment_name,
+                api_key=api_key,
+                max_output_tokens=2048
             )
         
         else:
@@ -173,5 +181,37 @@ AVAILABLE_MODELS = {
         model_type="anthropic",
         deployment_name="claude-sonnet-4-20250514",
         api_key_env="ANTHROPIC_API_KEY"
+    ),
+    
+    # Google Gemini Models
+    "gemini-pro": ModelConfig(
+        name="Gemini Pro",
+        model_type="gemini",
+        deployment_name="gemini-pro",
+        api_key_env="GOOGLE_API_KEY"
+    ),
+    "gemini-pro-vision": ModelConfig(
+        name="Gemini Pro Vision",
+        model_type="gemini",
+        deployment_name="gemini-pro-vision",
+        api_key_env="GOOGLE_API_KEY"
+    ),
+    "gemini-1.5-pro": ModelConfig(
+        name="Gemini 1.5 Pro",
+        model_type="gemini",
+        deployment_name="gemini-1.5-pro",
+        api_key_env="GOOGLE_API_KEY"
+    ),
+    "gemini-1.5-flash": ModelConfig(
+        name="Gemini 1.5 Flash",
+        model_type="gemini",
+        deployment_name="gemini-1.5-flash",
+        api_key_env="GOOGLE_API_KEY"
+    ),
+    "gemini-2.5-flash": ModelConfig(
+        name="Gemini 2.5 Flash",
+        model_type="gemini",
+        deployment_name="gemini-2.5-flash",
+        api_key_env="GOOGLE_API_KEY"
     ),
 }
