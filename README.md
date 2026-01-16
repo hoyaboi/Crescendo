@@ -162,6 +162,7 @@ python crescendo_eval.py --check-keys
   - 각 턴의 원본 프롬프트 (`attacker_original`)
   - 각 턴의 변환된 프롬프트 (`attacker_converted`, 이모지 변환 등)
   - 각 턴의 타겟 응답 (`target_response`)
+  - 각 턴의 백트래킹 횟수 (`backtrack_count`): 해당 턴에서 거부되어 백트래킹된 프롬프트-응답 쌍의 개수
 - 실험 설정
 
 ### 로깅 파일
