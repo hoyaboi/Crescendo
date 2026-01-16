@@ -162,7 +162,10 @@ python crescendo_eval.py --check-keys
   - 각 턴의 원본 프롬프트 (`attacker_original`)
   - 각 턴의 변환된 프롬프트 (`attacker_converted`, 이모지 변환 등)
   - 각 턴의 타겟 응답 (`target_response`)
-  - 각 턴의 백트래킹 횟수 (`backtrack_count`): 해당 턴에서 거부되어 백트래킹된 프롬프트-응답 쌍의 개수
+  - 각 턴의 Judge 점수 (`judge_score`): 0.0~1.0 사이의 float 값으로, 해당 턴에서 목표 달성 정도를 나타냄 (threshold 0.8 기준)
+  - 각 턴의 백트래킹된 프롬프트-응답 쌍 (`backtracked_pairs`): 해당 턴에서 거부되어 백트래킹된 프롬프트-응답 쌍의 리스트
+    - 각 백트래킹 쌍에는 `attacker_original`, `attacker_converted`, `target_response`, `refusal_judge` (boolean) 정보가 포함됨
+  - 각 턴의 백트래킹 횟수 (`backtrack_count`): `backtracked_pairs`의 개수
 - 실험 설정
 
 ### 로깅 파일
