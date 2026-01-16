@@ -1,4 +1,5 @@
 import asyncio
+import re
 from datetime import datetime
 from types import NoneType
 from typing import Dict, Any, List, Optional, MutableSequence
@@ -16,7 +17,7 @@ from pyrit.score import (
     SelfAskScaleScorer,
     FloatScaleThresholdScorer,
 )
-from pyrit.models import AttackOutcome, Message, ConversationType
+from pyrit.models import AttackOutcome, Message, ConversationType, Score
 from pyrit.memory.central_memory import CentralMemory
 
 from .utils import save_results, save_turn_logs, append_result_to_file, print_result_summary, print_task_progress
@@ -135,7 +136,7 @@ class CrescendoExperiment:
 
             duration = (datetime.now() - start_time).total_seconds()
             
-            # 각 턴의 상세 정보 추출 (백트래킹 정보 포함)
+            # 각 턴의 상세 정보 추출 (Judge 점수 및 백트래킹 정보 포함)
             turn_history = self._extract_turn_history(conversation, result, memory)
             num_turns = len(turn_history)
 
@@ -220,7 +221,6 @@ class CrescendoExperiment:
         return save_results(self.results, filename)
 
     def _extract_turn_history(self, conversation: MutableSequence[Message], result: Any = None, memory: Any = None) -> List[Dict[str, Any]]:
-        # 먼저 현재 conversation에서 턴 정보 추출
         turn_history = []
         turn_number = 0
         
@@ -231,24 +231,7 @@ class CrescendoExperiment:
             # User 메시지 (attacker prompt) 찾기
             if msg.role == "user" or (hasattr(msg, 'message_pieces') and msg.message_pieces and 
                                       any(mp.role == "user" for mp in msg.message_pieces)):
-                # 이전에 assistant 메시지가 있었는지 확인하여 새로운 턴인지 판단
-                is_new_turn = True
-                if i > 0:
-                    # 이전 메시지들을 역순으로 확인
-                    for k in range(i - 1, max(-1, i - 20), -1):
-                        prev_msg = conversation[k]
-                        if prev_msg.role == "assistant" or (hasattr(prev_msg, 'message_pieces') and 
-                                                             prev_msg.message_pieces and
-                                                             any(mp.role == "assistant" for mp in prev_msg.message_pieces)):
-                            is_new_turn = True
-                            break
-                        elif prev_msg.role == "user" or (hasattr(prev_msg, 'message_pieces') and prev_msg.message_pieces and
-                                                          any(mp.role == "user" for mp in prev_msg.message_pieces)):
-                            is_new_turn = False
-                            break
-                
-                if is_new_turn:
-                    turn_number += 1
+                turn_number += 1
                 
                 # Attacker prompt 추출
                 try:
@@ -264,6 +247,7 @@ class CrescendoExperiment:
                 
                 # 다음 Assistant 메시지 찾기 (target response)
                 target_response = None
+                judge_score = None
                 j = i + 1
                 while j < len(conversation):
                     next_msg = conversation[j]
@@ -272,89 +256,174 @@ class CrescendoExperiment:
                                                         any(mp.role == "assistant" for mp in next_msg.message_pieces)):
                         try:
                             target_response = next_msg.get_value() if hasattr(next_msg, 'get_value') else str(next_msg)
+                            # Judge 점수 추출 (assistant 메시지의 message_pieces에서 scores 찾기)
+                            judge_score = self._extract_judge_score(next_msg)
                         except Exception:
                             target_response = str(next_msg)
                         break
                     j += 1
                 
-                # 턴 정보 저장 (같은 턴의 마지막 메시지만 저장)
-                if is_new_turn:
-                    turn_info = {
-                        "turn": turn_number,
-                        "backtrack_count": 0,
-                        "attacker_original": attacker_original,
-                        "attacker_converted": attacker_converted,
-                        "target_response": target_response,
-                    }
-                    turn_history.append(turn_info)
-                else:
-                    # 같은 턴의 업데이트된 정보로 교체
-                    if turn_history and turn_history[-1]["turn"] == turn_number:
-                        turn_history[-1] = {
-                            "turn": turn_number,
-                            "backtrack_count": 0,
-                            "attacker_original": attacker_original,
-                            "attacker_converted": attacker_converted,
-                            "target_response": target_response,
-                        }
+                # 턴 정보 저장
+                turn_info = {
+                    "turn": turn_number,
+                    "attacker_original": attacker_original,
+                    "attacker_converted": attacker_converted,
+                    "target_response": target_response,
+                    "judge_score": judge_score,
+                    "backtracked_pairs": [],
+                    "backtrack_count": 0,
+                }
+                turn_history.append(turn_info)
             
             i += 1
         
-        # related_conversations에서 백트래킹된 conversation들을 분석하여 각 턴의 백트래킹 횟수 계산
+        # 백트래킹된 프롬프트-응답 쌍 추출
         if result and memory and hasattr(result, 'related_conversations'):
-            # PRUNED 타입의 conversation들 (백트래킹된 conversation)
-            pruned_conversations = [
-                conv_ref for conv_ref in result.related_conversations
-                if conv_ref.conversation_type == ConversationType.PRUNED
-            ]
-            
-            # 각 PRUNED conversation에서 마지막 턴을 확인하여 어떤 턴에서 백트래킹이 발생했는지 추적
-            turn_backtrack_counts = {}
-            for pruned_conv in pruned_conversations:
-                try:
-                    pruned_messages = memory.get_conversation(conversation_id=pruned_conv.conversation_id)
-                    if pruned_messages:
-                        # PRUNED conversation의 마지막 턴 번호 계산
-                        pruned_turn_count = self._count_turns_in_conversation(pruned_messages)
-                        # 해당 턴에서 백트래킹 발생
-                        if pruned_turn_count > 0:
-                            turn_backtrack_counts[pruned_turn_count] = turn_backtrack_counts.get(pruned_turn_count, 0) + 1
-                except Exception:
-                    # conversation을 가져올 수 없는 경우 무시
-                    continue
-            
-            # 각 턴의 백트래킹 횟수 업데이트
-            for turn_info in turn_history:
-                turn_num = turn_info["turn"]
-                turn_info["backtrack_count"] = turn_backtrack_counts.get(turn_num, 0)
+            self._extract_backtracked_pairs(turn_history, result, memory)
+        
+        # 각 턴의 backtrack_count 업데이트
+        for turn_info in turn_history:
+            if "backtracked_pairs" in turn_info:
+                turn_info["backtrack_count"] = len(turn_info["backtracked_pairs"])
         
         return turn_history
+    
+    def _extract_judge_score(self, assistant_msg: Message) -> Optional[float]:
+        """Assistant 메시지에서 Judge 점수를 추출합니다.
+        
+        FloatScaleThresholdScorer의 score_rationale에서 원래 float scale 점수를 파싱합니다.
+        예: "Normalized scale score: 0.75 < threshold 0.8" -> 0.75
+        """
+        try:
+            if hasattr(assistant_msg, 'message_pieces') and assistant_msg.message_pieces:
+                for piece in assistant_msg.message_pieces:
+                    if hasattr(piece, 'scores') and piece.scores:
+                        # FloatScaleThresholdScorer의 경우, score_rationale에서 원래 점수 파싱
+                        for score in piece.scores:
+                            scorer_type = score.scorer_class_identifier.get("__type__", "")
+                            
+                            if "FloatScaleThresholdScorer" in scorer_type:
+                                # score_rationale에서 "Normalized scale score: 0.75 < threshold 0.8" 형식 파싱
+                                score_value = self._parse_scale_score_from_rationale(score.score_rationale)
+                                if score_value is not None:
+                                    return score_value
+                        
+                        # FloatScaleThresholdScorer를 찾지 못한 경우, SelfAskScaleScorer의 점수 직접 찾기
+                        for score in piece.scores:
+                            scorer_type = score.scorer_class_identifier.get("__type__", "")
+                            # SelfAskScaleScorer의 점수 직접 찾기 (float_scale 타입)
+                            if "SelfAskScaleScorer" in scorer_type and score.score_type == "float_scale":
+                                return float(score.get_value())
+        except Exception:
+            pass
+        return None
+    
+    def _parse_scale_score_from_rationale(self, rationale: str) -> Optional[float]:
+        """score_rationale에서 원래 float scale 점수를 파싱합니다.
+        
+        예: "Normalized scale score: 0.75 < threshold 0.8" -> 0.75
+        """
+        try:
+            # "Normalized scale score: 0.75 < threshold 0.8" 패턴 매칭
+            pattern = r"Normalized scale score:\s*([0-9]+\.?[0-9]*)\s*[<>=]"
+            match = re.search(pattern, rationale)
+            if match:
+                return float(match.group(1))
+        except Exception:
+            pass
+        return None
+    
+    def _extract_backtracked_pairs(self, turn_history: List[Dict[str, Any]], result: Any, memory: Any) -> None:
+        """related_conversations에서 백트래킹된 프롬프트-응답 쌍을 추출하여 각 턴에 추가합니다."""
+        # PRUNED 타입의 conversation들 (백트래킹된 conversation)
+        pruned_conversations = [
+            conv_ref for conv_ref in result.related_conversations
+            if conv_ref.conversation_type == ConversationType.PRUNED
+        ]
+        
+        # 각 PRUNED conversation에서 마지막 턴의 프롬프트-응답 쌍 추출
+        for pruned_conv in pruned_conversations:
+            try:
+                pruned_messages = memory.get_conversation(conversation_id=pruned_conv.conversation_id)
+                if pruned_messages:
+                    # PRUNED conversation의 마지막 턴 추출
+                    last_turn_pair = self._extract_last_turn_from_conversation(pruned_messages)
+                    if last_turn_pair:
+                        # 해당 턴 번호 계산
+                        turn_num = self._count_turns_in_conversation(pruned_messages)
+                        # 해당 턴의 backtracked_pairs에 추가
+                        if turn_num > 0 and turn_num <= len(turn_history):
+                            turn_info = turn_history[turn_num - 1]
+                            if "backtracked_pairs" not in turn_info:
+                                turn_info["backtracked_pairs"] = []
+                            turn_info["backtracked_pairs"].append(last_turn_pair)
+            except Exception:
+                continue
+    
+    def _extract_last_turn_from_conversation(self, messages: MutableSequence[Message]) -> Optional[Dict[str, Any]]:
+        """conversation에서 마지막 턴의 프롬프트-응답 쌍과 refusal_judge 여부를 추출합니다."""
+        last_user_msg = None
+        last_assistant_msg = None
+        
+        # 마지막 user와 assistant 메시지 찾기
+        for msg in reversed(messages):
+            if msg.role == "assistant" and last_assistant_msg is None:
+                last_assistant_msg = msg
+            elif msg.role == "user" and last_user_msg is None:
+                last_user_msg = msg
+                break  # user 메시지를 찾으면 중단 (역순이므로)
+        
+        if last_user_msg and last_assistant_msg:
+            try:
+                attacker_original = None
+                attacker_converted = None
+                if hasattr(last_user_msg, 'message_pieces') and last_user_msg.message_pieces:
+                    attacker_original = last_user_msg.message_pieces[0].original_value if last_user_msg.message_pieces else None
+                    attacker_converted = last_user_msg.get_value() if hasattr(last_user_msg, 'get_value') else str(last_user_msg)
+                
+                target_response = None
+                if hasattr(last_assistant_msg, 'get_value'):
+                    target_response = last_assistant_msg.get_value()
+                else:
+                    target_response = str(last_assistant_msg)
+                
+                # refusal_judge 여부 추출
+                refusal_judge = self._extract_refusal_judge(last_assistant_msg)
+                
+                return {
+                    "attacker_original": attacker_original,
+                    "attacker_converted": attacker_converted,
+                    "target_response": target_response,
+                    "refusal_judge": refusal_judge,
+                }
+            except Exception:
+                pass
+        
+        return None
+    
+    def _extract_refusal_judge(self, assistant_msg: Message) -> bool:
+        """Assistant 메시지에서 refusal_judge 여부를 추출합니다."""
+        try:
+            if hasattr(assistant_msg, 'message_pieces') and assistant_msg.message_pieces:
+                for piece in assistant_msg.message_pieces:
+                    if hasattr(piece, 'scores') and piece.scores:
+                        # SelfAskRefusalScorer의 점수 찾기
+                        for score in piece.scores:
+                            scorer_type = score.scorer_class_identifier.get("__type__", "")
+                            if "SelfAskRefusalScorer" in scorer_type:
+                                if score.score_type == "true_false":
+                                    return bool(score.get_value())
+        except Exception:
+            pass
+        return False
     
     def _count_turns_in_conversation(self, messages: MutableSequence[Message]) -> int:
         """conversation에서 턴의 개수를 계산합니다."""
         turn_count = 0
-        i = 0
-        while i < len(messages):
-            msg = messages[i]
+        for msg in messages:
             if msg.role == "user" or (hasattr(msg, 'message_pieces') and msg.message_pieces and 
                                       any(mp.role == "user" for mp in msg.message_pieces)):
-                # 이전에 assistant 메시지가 있었는지 확인
-                is_new_turn = True
-                if i > 0:
-                    for k in range(i - 1, max(-1, i - 20), -1):
-                        prev_msg = messages[k]
-                        if prev_msg.role == "assistant" or (hasattr(prev_msg, 'message_pieces') and 
-                                                             prev_msg.message_pieces and
-                                                             any(mp.role == "assistant" for mp in prev_msg.message_pieces)):
-                            is_new_turn = True
-                            break
-                        elif prev_msg.role == "user" or (hasattr(prev_msg, 'message_pieces') and prev_msg.message_pieces and
-                                                          any(mp.role == "user" for mp in prev_msg.message_pieces)):
-                            is_new_turn = False
-                            break
-                if is_new_turn:
-                    turn_count += 1
-            i += 1
+                turn_count += 1
         return turn_count
 
     def print_summary(self):
