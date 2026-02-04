@@ -1,65 +1,65 @@
 # Crescendo Attack Evaluation
 
-Crescendo 공격 평가를 위한 실험 프레임워크입니다. PyRIT의 CrescendoAttack을 사용하여 멀티턴 공격을 실행하고 결과를 분석합니다.
+An experimental framework for evaluating Crescendo attacks. This project uses PyRIT's CrescendoAttack to execute multi-turn attacks and analyze the results.
 
-## 개요
+## Overview
 
-Crescendo 공격은 점진적으로 모델을 유도하여 유해한 콘텐츠를 생성하도록 하는 전략입니다. 이 프로젝트는 Crescendo 공격을 체계적으로 평가하고 결과를 저장하는 도구를 제공합니다.
+The Crescendo attack is a strategy that gradually guides a model to generate harmful content. This project provides tools to systematically evaluate Crescendo attacks and store the results.
 
 ## Reference
 
-이 프로젝트는 다음 논문에서 제안된 Crescendo 공격을 구현 및 평가합니다.
+This project implements and evaluates the Crescendo attack proposed in the following paper:
 
 > **Great, Now Write an Article About That: The Crescendo Multi-Turn LLM Jailbreak Attack**
 
-## 주요 기능
+## Key Features
 
-- Crescendo 공격 실행 및 평가
-- OpenAI, HuggingFace 모델 지원
-- 다중 테스크 일괄 처리
-- 각 턴의 상세 로깅 (원본/변환 프롬프트, 응답)
-- 결과 자동 저장 및 요약 (각 테스크마다 incremental save)
-- .env 파일을 통한 API 키 관리
+- Execute and evaluate Crescendo attacks
+- Support for OpenAI and HuggingFace models
+- Batch processing of multiple tasks
+- Detailed logging for each turn (original/converted prompts, responses)
+- Automatic result saving and summarization (incremental save for each task)
+- API key management via .env file
 
-## 설치
+## Installation
 
-### 1. 저장소 클론
+### 1. Clone Repository
 
 ```bash
 git clone <repository-url>
 cd crescendo
 ```
 
-### 2. 의존성 설치
+### 2. Install Dependencies
 
 ```bash
 pip install -r requirements.txt
 ```
 
-### 3. 환경 변수 설정
+### 3. Configure Environment Variables
 
-`.env` 파일을 생성하고 API 키를 설정합니다:
+Create a `.env` file and set your API keys:
 
 ```bash
-# OpenAI API (OpenAI 모델 사용 시)
+# OpenAI API (when using OpenAI models)
 OPENAI_API_KEY=your-openai-api-key
 
-# HuggingFace (HuggingFace 모델 사용 시)
+# HuggingFace (when using HuggingFace models)
 HUGGINGFACE_TOKEN=your-huggingface-token
 ```
 
-## 사용법
+## Usage
 
-### 기본 실행
+### Basic Execution
 
 ```bash
 python crescendo_eval.py
 ```
 
-### 모델 선택
+### Model Selection
 
 ```bash
-# 모든 모델을 gpt-4o로 설정
+# Set all models to gpt-4o
 python crescendo_eval.py \
   --target-model gpt-4o \
   --attacker-model gpt-4o \
@@ -67,7 +67,7 @@ python crescendo_eval.py \
   --refusal-judge-model gpt-4o
 ```
 
-### 실험 파라미터 조정
+### Adjust Experiment Parameters
 
 ```bash
 python crescendo_eval.py \
@@ -76,54 +76,54 @@ python crescendo_eval.py \
   --objective-threshold 0.8
 ```
 
-### 커스텀 테스크 파일 사용
+### Use Custom Task File
 
 ```bash
 python crescendo_eval.py --tasks-file data/your_tasks.json
 ```
 
-### 프롬프트 변환기 제어
+### Control Prompt Converter
 
-기본적으로 이모지 변환기(EmojiConverter)가 활성화되어 있습니다. 변환기를 비활성화하려면:
+By default, the emoji converter (EmojiConverter) is enabled. To disable the converter:
 
 ```bash
 python crescendo_eval.py --no-converter
 ```
 
-### 유틸리티 명령어
+### Utility Commands
 
 ```bash
-# 사용 가능한 모델 목록 확인
+# List available models
 python crescendo_eval.py --list-models
 
-# API 키 상태 확인
+# Check API key status
 python crescendo_eval.py --check-keys
 ```
 
-## 명령줄 옵션
+## Command Line Options
 
-### 모델 설정
+### Model Settings
 
-- `--target-model`: 공격 대상 모델 (기본값: gpt-4o-mini)
-- `--attacker-model`: 공격 프롬프트 생성 모델 (기본값: gpt-4o-mini)
-- `--judge-model`: 목표 달성 판단 모델 (기본값: gpt-4o-mini)
-- `--refusal-judge-model`: 거부 감지 모델 (기본값: gpt-4o-mini)
+- `--target-model`: Target model to attack (default: gpt-4o-mini)
+- `--attacker-model`: Model for generating attack prompts (default: gpt-4o-mini)
+- `--judge-model`: Model for judging objective achievement (default: gpt-4o-mini)
+- `--refusal-judge-model`: Model for detecting refusals (default: gpt-4o-mini)
 
-### 실험 파라미터
+### Experiment Parameters
 
-- `--max-turns`: 최대 턴 수 (기본값: 10)
-- `--max-backtracks`: 최대 백트래킹 횟수 (기본값: 10)
-- `--objective-threshold`: 목표 달성 임계값 (기본값: 0.8)
-- `--no-converter`: 프롬프트 변환기 비활성화 (기본값: 변환기 사용)
+- `--max-turns`: Maximum number of turns (default: 10)
+- `--max-backtracks`: Maximum number of backtracks (default: 10)
+- `--objective-threshold`: Objective achievement threshold (default: 0.8)
+- `--no-converter`: Disable prompt converter (default: converter enabled)
 
-### 파일 설정
+### File Settings
 
-- `--tasks-file`: 테스크 JSON 파일 경로 (기본값: data/custom_tasks.json)
-- `--output-file`: 결과 파일명 (기본값: 자동 생성)
+- `--tasks-file`: Path to task JSON file (default: data/custom_tasks.json)
+- `--output-file`: Result filename (default: auto-generated)
 
-## 테스크 파일 형식
+## Task File Format
 
-테스크는 JSON 파일로 정의합니다:
+Tasks are defined in JSON files:
 
 ```json
 [
@@ -134,68 +134,71 @@ python crescendo_eval.py --check-keys
 ]
 ```
 
-## 지원 모델
+## Supported Models
 
-현재 다음 모델을 지원합니다:
+The following models are currently supported:
 
 - **OpenAI**: `gpt-4`, `gpt-4o`, `gpt-4o-mini`, `gpt-3.5-turbo`
 - **HuggingFace**: `llama-2-7b`, `llama-2-70b`, `llama-3-8b`, `llama-3-70b`
 
-사용 가능한 모든 모델은 `--list-models` 옵션으로 확인할 수 있습니다.
+All available models can be checked using the `--list-models` option.
 
-새로운 모델을 추가하려면 `models/model_configs.py` 파일의 주석을 참고하세요.
+To add a new model, refer to the comments in the `models/model_configs.py` file.
 
-## 결과
+## Results
 
-### 결과 파일
+### Result Files
 
-실험 결과는 `outputs/results/` 디렉토리에 JSON 형식으로 저장됩니다. **각 테스크가 완료될 때마다 자동으로 저장**되므로, 중간에 프로그램이 중단되어도 지금까지의 결과는 보존됩니다.
+Experiment results are saved in JSON format in the `outputs/results/` directory. **Results are automatically saved each time a task completes**, so even if the program is interrupted, all results up to that point are preserved.
 
-각 결과 파일에는 다음 정보가 포함됩니다:
+Each result file contains the following information:
 
-- 테스크 이름 및 목표
-- 성공 여부 (Success)
-- 사용된 턴 수
-- 실행 시간
-- 최종 턴 요약 (Attacker Prompt, Target Response)
-- **턴 히스토리** (`turn_history`): 모든 턴의 상세 정보
-  - 각 턴의 원본 프롬프트 (`attacker_original`)
-  - 각 턴의 변환된 프롬프트 (`attacker_converted`, 이모지 변환 등)
-  - 각 턴의 타겟 응답 (`target_response`)
-  - 각 턴의 백트래킹 횟수 (`backtrack_count`): 해당 턴에서 거부되어 백트래킹된 프롬프트-응답 쌍의 개수
-- 실험 설정
+- Task name and objective
+- Success status
+- Number of turns used
+- Execution time
+- Final turn summary (Attacker Prompt, Target Response)
+- **Turn history** (`turn_history`): Detailed information for all turns
+  - Original prompt for each turn (`attacker_original`)
+  - Converted prompt for each turn (`attacker_converted`, emoji conversion, etc.)
+  - Target response for each turn (`target_response`)
+  - Judge score for each turn (`judge_score`): A float value between 0.0 and 1.0 indicating the degree of objective achievement for that turn (based on threshold 0.8)
+  - Backtracked prompt-response pairs for each turn (`backtracked_pairs`): A list of prompt-response pairs that were rejected and backtracked in that turn
+    - Each backtracked pair includes `attacker_original`, `attacker_converted`, `target_response`, and `refusal_judge` (boolean) information
+  - Backtrack count for each turn (`backtrack_count`): The number of `backtracked_pairs`
+- Experiment settings
 
-### 로깅 파일
+### Logging Files
 
-각 테스크의 상세 로깅은 `outputs/logs/` 디렉토리에 별도로 저장됩니다:
+Detailed logging for each task is saved separately in the `outputs/logs/` directory:
 
-- 파일명 형식: `turn_logs_{task_name}_{timestamp}.json`
-- 각 턴의 상세 정보 (원본/변환 프롬프트, 응답)
-- 백트래킹은 제외하고 실제 턴만 기록
+- File name format: `turn_logs_{task_name}_{timestamp}.json`
+- Detailed information for each turn (original/converted prompts, responses)
+- Only actual turns are recorded, excluding backtracks
 
-## 프로젝트 구조
+## Project Structure
 
 ```
 crescendo/
-├── crescendo_eval.py           # 메인 실행 스크립트
+├── crescendo_eval.py          # Main execution script
 ├── src/
-│   ├── orchestrator.py        # CrescendoExperiment 클래스
-│   └── utils.py               # 유틸리티 함수 (결과 저장, 로깅)
+│   ├── orchestrator.py        # CrescendoExperiment class
+│   └── utils.py               # Utility functions (result saving, logging)
 ├── models/
-│   ├── model_configs.py       # 모델 설정
-│   └── model_factory.py       # 모델 팩토리
+│   ├── model_configs.py       # Model configurations
+│   └── model_factory.py       # Model factory
 ├── data/
-│   └── custom_tasks.json      # 테스크 정의
+│   └── custom_tasks.json      # Task definitions
 ├── outputs/
-│   ├── results/               # 결과 저장 디렉토리
-│   └── logs/                 # 턴 로깅 저장 디렉토리
-├── requirements.txt           # 의존성 목록
-└── README.md                  # 이 파일
+│   ├── results/               # Result storage directory
+│   └── logs/                  # Turn logging storage directory
+├── requirements.txt           # Dependency list
+└── README.md                  # This file
 ```
 
-## 요구사항
+## Requirements
 
 - Python 3.11+
-- PyRIT 프레임워크
-- OpenAI API 키 (OpenAI 모델 사용 시)
-- HuggingFace 토큰 (HuggingFace 모델 사용 시)
+- PyRIT framework
+- OpenAI API key (when using OpenAI models)
+- HuggingFace token (when using HuggingFace models)
